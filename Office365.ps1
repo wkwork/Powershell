@@ -1,4 +1,4 @@
-﻿Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
+﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 
 Import-Module .\ActiveDirectory.ps1
 
