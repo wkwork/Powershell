@@ -12,7 +12,7 @@ if ($Office365credentials) {
 .Synopsis
    Connects to O365 tenant
 .DESCRIPTION
-   Connects to the 7-11 O365 tenant for further work
+   Connects to the 7-11 O365 tenant for further work 
 #>
 function Connect-O365 {
     param ()
