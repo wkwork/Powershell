@@ -374,3 +374,24 @@ function Get-LockoutServer {
         $_.properties[1].value
     } 
 }
+
+
+<#
+    NOT TESTED    
+    "34069","36043","11160","11232","23924", "32120","34083"
+#>
+function Set-StoreIpadPassword {
+    param (
+        $StoreNumber,
+        $NewPassword = "Pa55word",
+        $AdminCred = (Get-Credential -UserName "7-11\kwork006" -Message "Domain Admin Creds")
+    )
+
+    if ($Account = Get-ADUser ("sa-s" + $StoreNumber + "device")) {
+        "Setting {0} to {1}" -f $Account.DistinguishedName, $NewPassword
+        $Account | Set-ADAccountPassword -Reset -NewPassword (ConvertTo-SecureString -AsPlainText "$NewPassword" -Force) -Credential $AdminCred
+        Pause
+    } else {
+        Write-Warning "sa-s" + $StoreNumber + "device not found"
+    }
+}
