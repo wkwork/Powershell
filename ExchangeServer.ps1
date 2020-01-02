@@ -269,7 +269,7 @@ function Get-MailboxUsage {
 # Enable the on-prem mailbox and set the GUID to match O365
 # You must connect to O365 first and get the GUID
 # You can run it for an individual or with a CSV input - column names should be "UserID" and "GUID"
-# Usage: Enable-ExistingRemoteMailbox "COOP38815" "61a1cd0d-6765-4d79-9ee4-35dcb4727d67"
+# Usage: Enable-ExistingRemoteMailbox "tharw001" "200eb482-3d08-45b5-a95c-00127dcf168b"
 # Usage: Enable-ExistingRemoteMailbox -CSVFilePath C:\Temp\GUIDs.csv
 function Enable-ExistingRemoteMailbox {
     param (

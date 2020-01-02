@@ -1,5 +1,5 @@
 ﻿Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
-Import-Module .\common.ps1
+Import-Module .\ActiveDirectory.ps1
 
 [System.Management.Automation.PSCredential]$AdminCred = Get-Credential -Message "Domain Admin Credential"
 
@@ -8,11 +8,11 @@ function Connect-SkypeForBusiness {
     [CmdletBinding()]
     param (
         $Pool = "lyncpool2",
-        [System.Management.Automation.PSCredential]$Cred = $AdminCred
+        [System.Management.Automation.PSCredential]$Cred
     )
     
     process {
-        $session = New-PSSession -Name "Skype2015" -ConnectionURI "https://$Pool.7-11.com/OcsPowershell" -Credential $Cred
+        $session = New-PSSession -Name "Skype2015" -ConnectionURI "https://$Pool.7-11.com/OcsPowershell"
         Import-PsSession $session
     }
     
@@ -94,6 +94,8 @@ function Grant-SkypeUserCloudPolicy
         return $User
     }
 }
+
+
 
 
 Connect-SkypeForBusiness

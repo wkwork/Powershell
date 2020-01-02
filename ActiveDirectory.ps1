@@ -167,11 +167,12 @@ function Move-GroupMembership {
         # Get members of deprecated license group
         Get-ADGroupMember $OldGroup | Get-ADUser | ForEach-Object {
             "{0} : {1} -> {2}" -f $_.Name, $OldGroup, $NewGroup
+            Pause
             $Confirmed = Confirm-GroupMembership $_ -GroupName $NewGroup
             # If not in new group, add user
             if (! $Confirmed) {
                 # Add to preferred group and confirm it
-                Add-ADGroupMember -Credential $AdminCred -Identity $NewGroup -Members $_
+                Add-ADGroupMember -Credential $AdminCred -Identity $NewGroup -Members $_ -Confirm:$false
                 Start-Sleep 5        
                 $Confirmed = Confirm-GroupMembership $_ -GroupName $NewGroup
             }
@@ -179,7 +180,7 @@ function Move-GroupMembership {
             # If confirmed in the new group
             if ($Confirmed) {
                 # Remove from old group
-                Remove-ADGroupMember -Credential $AdminCred -Identity $OldGroup -Members $_ -Confirm
+                Remove-ADGroupMember -Credential $AdminCred -Identity $OldGroup -Members $_  -Confirm:$false
                 "Confirmed"
             }
         }
@@ -376,6 +377,125 @@ function Get-LockoutServer {
 }
 
 
+
+function Get-RemoteRecipientType {
+    param (
+        $SamAccountName
+    )
+    
+    if ($User = Get-ADUser $SamAccountName -Properties msExchRemoteRecipientType) {
+
+        switch ($User.msExchRemoteRecipientType) {
+            "1"     {return "ProvisionMailbox"}                                             # Users
+            "2"     {return "ProvisionArchive (On-Prem Mailbox)"}
+            "3"     {return "ProvisionMailbox, ProvisionArchive"}
+            "4"     {return "Migrated (UserMailbox)"}
+            "6"     {return "ProvisionArchive, Migrated"}
+            "8"     {return "DeprovisionMailbox"}
+            "10"    {return "ProvisionArchive, DeprovisionMailbox"}
+            "16"    {return "DeprovisionArchive (On-Prem Mailbox)"}
+            "17"    {return "ProvisionMailbox, DeprovisionArchive"}
+            "20"    {return "Migrated, DeprovisionArchive"}
+            "24"    {return "DeprovisionMailbox, DeprovisionArchive"}
+            "32"    {return "RoomMailbox"}                                                  # Rooms
+            "33"    {return "ProvisionMailbox, RoomMailbox"}
+            "35"    {return "ProvisionMailbox, ProvisionArchive, RoomMailbox"}
+            "36"    {return "Migrated, RoomMailbox"}
+            "38"    {return "ProvisionArchive, Migrated, RoomMailbox"}
+            "49"    {return "ProvisionMailbox, DeprovisionArchive, RoomMailbox"}
+            "52"    {return "Migrated, DeprovisionArchive, RoomMailbox"}
+            "64"    {return "EquipmentMailbox"}                                             # Equipment
+            "65"    {return "ProvisionMailbox, EquipmentMailbox"}
+            "67"    {return "ProvisionMailbox, ProvisionArchive, EquipmentMailbox"}
+            "68"    {return "Migrated, EquipmentMailbox"}
+            "70"    {return "ProvisionArchive, Migrated, EquipmentMailbox"}
+            "81"    {return "ProvisionMailbox, DeprovisionArchive, EquipmentMailbox"}
+            "84"    {return "Migrated, DeprovisionArchive, EquipmentMailbox"}
+            "96"    {return "SharedMailbox"}                                                # Shared Mailboxes
+            "100"   {return "Migrated, SharedMailbox"}
+            "102"   {return "ProvisionArchive, Migrated, SharedMailbox"}
+            "116"   {return "Migrated, DeprovisionArchive, SharedMailbox"}
+        }
+    }
+
+}
+
+
+
+function Get-RecipientType {
+    param (
+        $SamAccountName
+    )
+    
+    if ($User = Get-ADUser $SamAccountName -Properties msExchRecipientDisplayType) {
+
+        switch ($User.msExchRecipientDisplayType) {
+            "-2147483642"   {return "MailUser (RemoteUserMailbox)"}
+            "-2147481850"   {return "MailUser (RemoteRoomMailbox)"}
+            "-2147481594"   {return "MailUser (RemoteEquipmentMailbox)"}
+            "0"             {return "UserMailbox (shared)"}
+            "1"             {return "MailUniversalDistributionGroup"}
+            "2"             {return "Public Folder"}
+            "3"             {return "Dynamic Distribution Group"}
+            "4"             {return "Organization"}
+            "5"             {return "Private Distribution List"}
+            "6"             {return "MailContact"}
+            "7"             {return "UserMailbox (room)"}
+            "8"             {return "UserMailbox (equipment)"}
+            "1073741824"    {return "ACL able Mailbox User"}
+            "1073741833"    {return "MailUniversalSecurityGroup"}
+        }
+    }
+}
+
+
+
+function Get-RecipientTypeDetails {
+    param (
+        $SamAccountName
+    )
+    
+    if ($User = Get-ADUser $SamAccountName -Properties msExchRecipientTypeDetails) {
+
+        switch ($User.msExchRecipientTypeDetails) {
+            "1"             {return "User Mailbox"}
+            "2"             {return "Linked Mailbox"}
+            "4"             {return "Shared Mailbox"}
+            "8"             {return "Legacy Mailbox"}
+            "16"            {return "Room Mailbox"}
+            "32"            {return "Equipment Mailbox"}
+            "64"            {return "Mail Contact"}
+            "128"           {return "Mail User"}
+            "256"           {return "Mail-Enabled Universal Distribution Group"}
+            "512"           {return "Mail-Enabled Non-Universal Distribution Group"}
+            "1024"          {return "Mail-Enabled Universal Security Group"}
+            "2048"          {return "Dynamic Distribution Group"}
+            "4096"          {return "Public Folder"}
+            "8192"          {return "System Attendant Mailbox"}
+            "16384"         {return "System Mailbox"}
+            "32768"         {return "Cross-Forest Mail Contact"}
+            "65536"         {return "User"}
+            "131072"        {return "Contact"}
+            "262144"        {return "Universal Distribution Group"}
+            "524288"        {return "Universal Security Group"}
+            "1048576"       {return "Non-Universal Group"}
+            "2097152"       {return "Disabled User"}
+            "4194304"       {return "Microsoft Exchange"}
+            "8388608"       {return "Arbitration Mailbox"}
+            "16777216"      {return "Mailbox Plan"}
+            "33554432"      {return "Linked User"}
+            "268435456"     {return "Room List"}
+            "536870912"     {return "Discovery Mailbox"}
+            "1073741824"    {return "Role Group"}
+            "2147483648"    {return "Remote Mailbox"}
+            "137438953472"  {return "Team Mailbox"}
+        }
+    }
+
+}
+
+
+# ---------------------------------- Working ------------------------------
 <#
     NOT TESTED    
     "34069","36043","11160","11232","23924", "32120","34083"
