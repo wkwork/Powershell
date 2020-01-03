@@ -1,9 +1,6 @@
 ﻿Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 Import-Module .\ActiveDirectory.ps1
 
-[System.Management.Automation.PSCredential]$AdminCred = Get-Credential -Message "Domain Admin Credential"
-
-
 function Connect-SkypeForBusiness {
     [CmdletBinding()]
     param (
@@ -97,5 +94,5 @@ function Grant-SkypeUserCloudPolicy
 
 
 
-
-Connect-SkypeForBusiness
+$AdminCred = Get-Credential -Message "Domain Admin Credential"
+Connect-SkypeForBusiness -Cred $AdminCred

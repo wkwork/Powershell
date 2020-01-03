@@ -336,4 +336,39 @@ function Search-ExchangeLogs {
     Get-MailboxServer USTXALMMB02 | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -EventId Receive
 }
 
+
+function Update-AuthenticationRequirements {
+    [CmdletBinding()]
+    param (
+        
+    )
+    
+    begin {
+        $AlreadySet = 0
+        $Corrected = 0
+    }
+    
+    process {
+
+        Write-Host "Checking groups" -NoNewline
+
+        Get-DistributionGroup -identity "store manager *" -ResultSize 20000 | foreach-object {
+
+            if ($_.RequireSenderAuthenticationEnabled -eq $False){
+                Write-Host "." -NoNewline
+                $AlreadySet++
+            } else {
+                Write-Host " "
+                Write-Host "UPDATING $($_.Name)..."
+                Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm
+                $Corrected++
+            }
+        }
+    }
+    
+    end {
+        "$AlreadySet already set. $Corrected corrected."
+    }
+}
+
 Connect-Exchange
