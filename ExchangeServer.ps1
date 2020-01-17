@@ -371,4 +371,14 @@ function Update-AuthenticationRequirements {
     }
 }
 
+
+
+function Search-ExchangeObjects {
+    param (
+        $SearchTerm
+    )
+    "Searching for $SearchTerm"
+    Get-Recipient -Filter "name -like '*$SearchTerm*' -or PrimarySmtpAddress -like '*$SearchTerm*'" | select Name, PrimarySmtpAddress, RecipientType, RecipientTypeDetails | Format-Table -AutoSize
+}
+
 Connect-Exchange
