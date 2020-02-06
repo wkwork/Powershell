@@ -1,6 +1,6 @@
 ﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 
-Import-Module .\ActiveDirectory.ps1
+# Import-Module .\ActiveDirectory.ps1
 
 if ($Office365credentials) {
     Write-Warning "Using saved credentials..."
@@ -242,22 +242,22 @@ function Resolve-LicenseGroups {
     Import-Module "\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules\ActiveDirectory.ps1"
 
     # Move E5 licensees to E3
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-SPE-E5-AdvanceFeatureSet -NewGroupName USER-MS-Sub-O365-E3-AdvanceFeatureSet
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-SPE-E5-DefaultFeatureSet -NewGroupName USER-MS-Sub-O365-E3-DefaultFeatureSet
-    Copy-GroupMembership -OldGroupName USER-ms-sub-o365-E5-FS1 -NewGroupName USER-MS-Sub-O365-E3-FS1
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-EMS-E5 -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5-AdvanceFeatureSet -NewGroupName USER-MS-Sub-O365-E3-AdvanceFeatureSet
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5-DefaultFeatureSet -NewGroupName USER-MS-Sub-O365-E3-DefaultFeatureSet
+    Copy-GroupMembers -OldGroupName USER-ms-sub-o365-E5-FS1 -NewGroupName USER-MS-Sub-O365-E3-FS1
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-EMS-E5 -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
 
     # Assign E3 Mobility + Security
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-O365-E3-AdvanceFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-O365-E3-COOP_East -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-O365-E3-DefaultFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-O365-E3-FS1 -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-AdvanceFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-COOP_East -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-DefaultFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-FS1 -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
 
     # Assign E5 Mobility + Security
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-SPE-E5-AdvanceFeatureSet -NewGroupName USER-MS-Sub-EMS-E5
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-SPE-E5-DefaultFeatureSet -NewGroupName USER-MS-Sub-EMS-E5
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-SPE-E5 -NewGroupName USER-MS-Sub-EMS-E5
-    Copy-GroupMembership -OldGroupName USER-MS-Sub-O365-E5-FS1 -NewGroupName USER-MS-Sub-EMS-E5
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5-AdvanceFeatureSet -NewGroupName USER-MS-Sub-EMS-E5
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5-DefaultFeatureSet -NewGroupName USER-MS-Sub-EMS-E5
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5 -NewGroupName USER-MS-Sub-EMS-E5
+    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E5-FS1 -NewGroupName USER-MS-Sub-EMS-E5
 
 }
 

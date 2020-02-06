@@ -18,62 +18,6 @@ if ($AdminCred) {
    Added admin group to script 8/30/19
 #>
 
-function Copy-GroupMembership
-{
-    [CmdletBinding()]
-    [Alias()]
-    [OutputType([int])]
-    Param
-    (
-        $OldGroupName,
-        $NewGroupName,
-        $Limit,
-        $LogPath = "C:\Temp\Copy-GroupMembership.log"
-    )
-
-    Begin{}
-
-    Process{
-    
-        $Count = 0
-
-
-        $searchRoot = New-Object System.DirectoryServices.DirectoryEntry
-        $adSearcher = New-Object System.DirectoryServices.DirectorySearcher
-        $adSearcher.SearchRoot = $searchRoot
-
-        $adSearcher.Filter = "(cn=$OldGroupName)"
-
-        $adSearcher.PropertiesToLoad.Add("member")
-        $samResult = $adSearcher.FindOne()
-
-        if($samResult)
-        {
-            $adAccount = $samResult.GetDirectoryEntry()
-            $OldGroupMembers = $adAccount.Properties["member"]
-        }
-        
-        if ($Limit) {$OldGroupMembers = $OldGroupMembers[0..($Limit-1)]}
-
-        $OldGroupMembersSum = ($OldGroupMembers | Measure-Object).count
-        $OldGroupMembers | Get-ADUser | ForEach-Object{
-
-            $User = $_.Samaccountname
-            $Count++
-
-            try{
-                Add-ADGroupMember -Credential $AdminCred -GroupName $NewGroupName -Members $_
-                "$(Get-Date) : $Count of $OldGroupMembersSum : $NewGroupName + $User : SUCCESS" | Tee-Object -FilePath $LogPath -Append
-            } catch {
-                "$(Get-Date) : $Count of $OldGroupMembersSum : $NewGroupName + $User  : $($_.exception.message)" | Tee-Object -FilePath $LogPath -Append
-            }
-
-            Start-Sleep 1
-        }
-    }
-
-    End{}
-}
 
 <#
 .Synopsis
@@ -191,9 +135,27 @@ function Move-GroupMembership {
 }
 
 
+# Add one user to each group that another user is assigned to, duplicating that user's group membership
+function Copy-GroupMembership {
+    [CmdletBinding()]
+    param (
+        [Microsoft.ActiveDirectory.Management.ADUser]$SourceUser,
+        [Microsoft.ActiveDirectory.Management.ADUser]$TargetUser
+    )
+    
+    $Groups = (Get-ADUser $SourceUser -Properties memberOf).memberOf
+
+    Foreach($Group in $Groups) {
+        "Adding {0} to {1}" -f $TargetUser.Name, $Group
+        Get-ADGroup -Identity $Group
+        Add-ADGroupMember -Identity $Group -Members $TargetUser -Confirm
+    }
+}
+
+
 
 # Copy members of one group to another
-function Copy-GroupMembership {
+function Copy-GroupMembers {
     [CmdletBinding()]
     param (
             $NewGroup,
@@ -321,8 +283,8 @@ function Update-UserPrincipalName
 
 function Confirm-O365License {
     param (
-        [Parameter(Mandatory=$true, ValueFromPipeline)]
-        $EmailAddress,
+        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)]
+        $Mail,
         [switch]$F1,
         [switch]$E3,
         [switch]$E5
@@ -336,7 +298,7 @@ function Confirm-O365License {
     $ValidE5 = $false
     $ValidLicense = $false
 
-    $User = Get-ADUser -Filter {mail -eq $EmailAddress}
+    $User = Get-ADUser -Filter {mail -eq $Mail}
 
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-DefaultFeatureSet") {$E3 = $True}
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-AdvanceFeatureSet") {$E3 = $True}
@@ -350,9 +312,9 @@ function Confirm-O365License {
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-EMS-E5") {$E5M = $True}
     if ($E3 -and $E3M){$ValidE3 = $True}
     if ($E5 -and $E5M){$ValidE5= $True}
-    if ($ValidE3 -or $ValidE5){$ValidLicense = $True}
+    if ($ValidE5){$ValidLicense = $True}
     if ($ValidLicense){return $True} else {
-        Write-Warning "No license assigned to $EmailAddress. Use Add-O365License to add one."
+        Write-Warning "No valid license assigned to $Mail. Use Add-O365License to add one."
         return $false}
 }
 

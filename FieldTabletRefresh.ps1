@@ -197,7 +197,7 @@ function Confirm-MoveRequestPrep {
     if ($User = Get-ADUser -Filter {mail -eq $Email} -Properties Mail, Title, Description) {
         $Result.User = $User.Mail
         $Result.Intune = Confirm-GroupMembership -User $User -GroupName "App-Intune"
-        $Result.Office = Confirm-O365License -EmailAddress $User.Mail
+        $Result.Office = Confirm-O365License -Mail $User.Mail
         $Result.Migration = (Get-MoveRequest -Identity $User.Mail -ErrorAction silentlycontinue).Status
     }
 
