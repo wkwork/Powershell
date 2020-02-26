@@ -651,4 +651,22 @@ function Set-StandardBookinPolicy {
 }
 
 
+# Usage: Get-StoreForwardingAddress 25290
+# Returns an email address (string value) like boardwalk_ftcollins@monfortcompanies.com
+function Get-StoreForwardingAddress {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true, ValueFromPipeline)]$StoreNumber
+    )
+    process{
+        $Recipients = Get-DistributionGroupMember "storemanager$StoreNumber@7-11.com"  | Get-Mailbox
+        foreach ($Recipient in $Recipients) {
+            $ForwardingTarget = Get-MailContact $Recipient.ForwardingAddress
+            Write-Verbose "Group:storemanager$StoreNumber@7-11.com >> Contact:$($Recipient.PrimarySmtpAddress) >> Email:$($ForwardingTarget.PrimarySmtpAddress)"
+            return $ForwardingTarget.PrimarySmtpAddress
+        }
+    }
+}
+
+
 Connect-O365
