@@ -1,6 +1,6 @@
 ﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 
-# Import-Module .\ActiveDirectory.ps1
+Import-Module .\ActiveDirectory.ps1
 
 if ($Office365credentials) {
     Write-Warning "Using saved credentials..."
@@ -239,19 +239,17 @@ function Resolve-LicenseGroups {
         $DependentGroupName
     )
 
-    Import-Module "\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules\ActiveDirectory.ps1"
+    # Move E3 licensees to E5
+    Copy-GroupMembers -NewGroup USER-MS-Sub-SPE-E5-AdvanceFeatureSet -OldGroup USER-MS-Sub-O365-E3-AdvanceFeatureSet
+    Copy-GroupMembers -NewGroup USER-MS-Sub-SPE-E5-DefaultFeatureSet -OldGroup USER-MS-Sub-O365-E3-DefaultFeatureSet
+    Copy-GroupMembers -NewGroup USER-ms-sub-o365-E5-FS1 -OldGroup USER-MS-Sub-O365-E3-FS1
+    Copy-GroupMembers -NewGroup USER-MS-Sub-EMS-E5 -OldGroup USER-MS-Sub-EMS-E3-DefaultFeatureSet
 
-    # Move E5 licensees to E3
-    Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5-AdvanceFeatureSet -NewGroupName USER-MS-Sub-O365-E3-AdvanceFeatureSet
-    Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5-DefaultFeatureSet -NewGroupName USER-MS-Sub-O365-E3-DefaultFeatureSet
-    Copy-GroupMembers -OldGroupName USER-ms-sub-o365-E5-FS1 -NewGroupName USER-MS-Sub-O365-E3-FS1
-    Copy-GroupMembers -OldGroupName USER-MS-Sub-EMS-E5 -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
-
-    # Assign E3 Mobility + Security
-    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-AdvanceFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
-    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-COOP_East -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
-    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-DefaultFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
-    Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-FS1 -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    # Assign E3 Mobility + Security - E3 HAS BEEN RETIRED
+    # Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-AdvanceFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    # Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-COOP_East -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    # Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-DefaultFeatureSet -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
+    # Copy-GroupMembers -OldGroupName USER-MS-Sub-O365-E3-FS1 -NewGroupName USER-MS-Sub-EMS-E3-DefaultFeatureSet
 
     # Assign E5 Mobility + Security
     Copy-GroupMembers -OldGroupName USER-MS-Sub-SPE-E5-AdvanceFeatureSet -NewGroupName USER-MS-Sub-EMS-E5
@@ -521,9 +519,49 @@ function Export-TeamsList
 
 
 
-function Add-O365License {
+function Confirm-O365License {
     param (
-        $UserEmail,
+        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)]
+        $Mail,
+        [switch]$F1,
+        [switch]$E3,
+        [switch]$E5
+    )
+    
+    $E3 = $false
+    $E3M = $false
+    $E5 = $false
+    $E5M = $false
+    $ValidE3 = $false
+    $ValidE5 = $false
+    $ValidLicense = $false
+
+    $User = Get-ADUser -Filter {mail -eq $Mail}
+
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-DefaultFeatureSet") {$E3 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-AdvanceFeatureSet") {$E3 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-COOP_East") {$E3 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-FS1") {$E3 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-EMS-E3-DefaultFeatureSet") {$E3M = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5-DefaultFeatureSet") {$E5 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-ms-sub-o365-E5-FS1") {$E5 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5") {$E5 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5-AdvanceFeatureSet") {$E5 = $True}
+    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-EMS-E5") {$E5M = $True}
+    if ($E3 -and $E3M){$ValidE3 = $True}
+    if ($E5 -and $E5M){$ValidE5= $True}
+    if ($ValidE5){$ValidLicense = $True}
+    if ($ValidLicense){return $True} else {
+        Write-Warning "No valid license assigned to $Mail. Use Add-O365License to add one."
+        return $false}
+}
+
+
+
+
+function Assign-O365License {
+    param (
+        $UserPrincipalName,
         [switch]$F1,
         [switch]$E3,
         [switch]$E5
@@ -531,24 +569,24 @@ function Add-O365License {
     
     Process{
 
-        $User = Get-ADUser -Filter {mail -eq $UserEmail}
+        $User = Get-ADUser -Filter {UserPrincipalName -eq $UserPrincipalName}
 
         if ($F1){
             # Add F1
-            Write-Warning "Assigning F1 to $UserEmail"
+            Write-Warning "Assigning F1 to $UserPrincipalName"
             Add-ADGroupMember -Identity USER-MS-SUB-SA-F1 -Members $User -Credential $AdminCred
         }
 
         if ($E3){
             # Add E3
-            Write-Warning "Assigning E3 to $UserEmail"
+            Write-Warning "Assigning E3 to $UserPrincipalName"
             Add-ADGroupMember -Identity USER-MS-Sub-O365-E3-DefaultFeatureSet -Members $User -Credential $AdminCred
             Add-ADGroupMember -Identity USER-MS-Sub-EMS-E3-DefaultFeatureSet -Members $User -Credential $AdminCred
         }
 
         if ($E5){
             # Add E5
-            Write-Warning "Assigning E5 to $UserEmail"
+            Write-Warning "Assigning E5 to $UserPrincipalName"
             Add-ADGroupMember -Identity USER-MS-Sub-SPE-E5-DefaultFeatureSet -Members $User -Credential $AdminCred
             Add-ADGroupMember -Identity USER-MS-Sub-EMS-E5 -Members $User -Credential $AdminCred
         }

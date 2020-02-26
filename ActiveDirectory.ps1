@@ -162,21 +162,26 @@ function Copy-GroupMembers {
             $OldGroup
     )
     
-    begin {
-        Import-Module "\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules\ActiveDirectory.ps1"
-    }
+    begin {}
     
     process {
         # Get members of old group
         Get-ADGroupMember $OldGroup | Get-ADUser | ForEach-Object {
-            "{0} : {1} + {2}" -f $_.Name, $OldGroup, $NewGroup
-            Add-ADGroupMember -Credential $AdminCred -Identity $NewGroup -Members $_
-            Start-Sleep 5        
+            $Confirmed = $null
             $Confirmed = Confirm-GroupMembership $_ -GroupName $NewGroup
-
+            if ($Confirmed){
+                "{0} is already in {1}" -f $_.Name, $NewGroup
+            } else {
+                "Adding {0} to {1}" -f $_.Name, $NewGroup
+                Add-ADGroupMember -Credential $AdminCred -Identity $NewGroup -Members $_
+                Start-Sleep 5        
+                $Confirmed = Confirm-GroupMembership $_ -GroupName $NewGroup
+            }
             # If confirmed in the new group
             if ($Confirmed) {
                 "Copy Confirmed"
+            } else {
+                "Copy FAILED"
             }
         }
     }
@@ -230,7 +235,7 @@ function Remove-DisabledUsersFromGroup
 }
 
 
-# Remove disabled from users specifically from O365 groups
+# Remove disabled users specifically from O365 groups
 function Remove-DisabledUsersFromO365LicenseGroups
 {
 
@@ -278,46 +283,6 @@ function Update-UserPrincipalName
         }
     }
 }
-
-
-
-function Confirm-O365License {
-    param (
-        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)]
-        $Mail,
-        [switch]$F1,
-        [switch]$E3,
-        [switch]$E5
-    )
-    
-    $E3 = $false
-    $E3M = $false
-    $E5 = $false
-    $E5M = $false
-    $ValidE3 = $false
-    $ValidE5 = $false
-    $ValidLicense = $false
-
-    $User = Get-ADUser -Filter {mail -eq $Mail}
-
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-DefaultFeatureSet") {$E3 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-AdvanceFeatureSet") {$E3 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-COOP_East") {$E3 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-FS1") {$E3 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-EMS-E3-DefaultFeatureSet") {$E3M = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5-DefaultFeatureSet") {$E5 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-ms-sub-o365-E5-FS1") {$E5 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5") {$E5 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5-AdvanceFeatureSet") {$E5 = $True}
-    if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-EMS-E5") {$E5M = $True}
-    if ($E3 -and $E3M){$ValidE3 = $True}
-    if ($E5 -and $E5M){$ValidE5= $True}
-    if ($ValidE5){$ValidLicense = $True}
-    if ($ValidLicense){return $True} else {
-        Write-Warning "No valid license assigned to $Mail. Use Add-O365License to add one."
-        return $false}
-}
-
 
 
 

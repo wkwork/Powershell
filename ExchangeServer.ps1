@@ -1,11 +1,6 @@
 ﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 Import-Module .\common.ps1
 
-function Load-ExchangeCommands {
-    . "C:\Program Files\Microsoft\Exchange Server\V15\RemoteScripts\ConsoleInitialize.ps1"
-    Connect-ExchangeServer -auto -ClientApplication:ManagementShell
-}
-
 
 function Connect-Exchange {
 
@@ -382,3 +377,63 @@ function Search-ExchangeObjects {
 }
 
 Connect-Exchange
+
+
+
+
+########################### working ###############################
+
+
+<#
+
+Contract to Perm
+A novel in 12 parts
+
+Confirm old and new accounts
+If old account is on-prem
+    Migrate to O365
+Soft-Delete mailbox
+    Disable remote mailbox on-prem
+    Remove O365 license
+    Sync AAD
+Restore inactive old mailbox to new mailbox
+Remove inactive account/mailbox completely
+Assign old address as alias to new mailbox
+#>
+
+function Convert-ContractMailboxToFteMailbox {
+    param (
+        [string]$OldAccountName = "skees002",
+        [string]$NewAccountName = "s1922843"
+    )
+    
+    # Confirm users exist
+    If ($OldUser = Get-ADUser $OldAccountName -Properties Mail, MSExchRecipientTypeDetails) {"Found $Oldaccountname"} else {Write-Warning "$Oldaccountname not found in AD!"}
+    If ($NewUser = Get-ADUser $NewAccountName -Properties Mail, MSExchRecipientTypeDetails) {"Found $NewAccountName"} else {Write-Warning "$NewAccountName not found in AD!"}
+    
+    If ($OldUser -and $NewUser){
+    
+        # Connect to Exchange
+        $OnPremSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionURI http://USTXALMMB01.7-11.com/PowerShell/ -Authentication Kerberos -WarningAction Silentlycontinue
+        Import-PSSession $OnPremSession -WarningAction SilentlyContinue -Prefix OnPrem
+    
+        # Get mailboxes for both accounts
+        # TODO: Need to confirm where each mailbox is. If old mailbox is on-prem, connect to O365 and migrate it.
+        $OldUser, $NewUser | ForEach-Object {
+            if ($_.Mail){
+                If ($_.MSExchRecipientTypeDetails -eq 1){Get-OnPremMailbox $_.Mail -}
+                If ($_.MSExchRecipientTypeDetails -eq 2147483648){Get-OnPremRemoteMailbox $_.Mail}
+            } else {
+                Write-Warning "$($_.Name) does not have an email address"
+                Exit
+            }
+        }
+    
+        Remove-PSSession $OnPremSession
+    
+    
+    } else {
+        exit
+    }
+
+}
