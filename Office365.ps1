@@ -234,10 +234,6 @@ function Export-DelegatesAndForwardingRules
    that each E3 and E5 license has a Mobility + Security license.
 #>
 function Resolve-LicenseGroups {
-    param (
-        $TargetGroupName,
-        $DependentGroupName
-    )
 
     # Move E3 licensees to E5
     Copy-GroupMembers -NewGroup USER-MS-Sub-SPE-E5-AdvanceFeatureSet -OldGroup USER-MS-Sub-O365-E3-AdvanceFeatureSet
@@ -652,18 +648,27 @@ function Set-StandardBookinPolicy {
 
 
 # Usage: Get-StoreForwardingAddress 25290
-# Returns an email address (string value) like boardwalk_ftcollins@monfortcompanies.com
+# Usage: 25290, 26803 | Get-StoreForwardingAddress -verbose
+# Returns an email address (string value) like boardwalk_ftcollins@monfortcompanies.com. Use -verbose for more info.
 function Get-StoreForwardingAddress {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true, ValueFromPipeline)]$StoreNumber
     )
     process{
-        $Recipients = Get-DistributionGroupMember "storemanager$StoreNumber@7-11.com"  | Get-Mailbox
+        $Recipients = Get-DistributionGroupMember "storemanager$StoreNumber@7-11.com"
         foreach ($Recipient in $Recipients) {
-            $ForwardingTarget = Get-MailContact $Recipient.ForwardingAddress
-            Write-Verbose "Group:storemanager$StoreNumber@7-11.com >> Contact:$($Recipient.PrimarySmtpAddress) >> Email:$($ForwardingTarget.PrimarySmtpAddress)"
-            return $ForwardingTarget.PrimarySmtpAddress
+            If ($Recipient.RecipientType -eq "UserMailbox"){
+                $RecipientMailbox = $Recipient | Get-Mailbox
+                $ForwardingTarget = Get-MailContact $RecipientMailbox.ForwardingAddress
+                Write-Host -ForegroundColor Yellow "Group: storemanager$StoreNumber@7-11.com --> Member: $($RecipientMailbox.Name) ($($RecipientMailbox.PrimarySmtpAddress)) --> Contact: $($RecipientMailbox.ForwardingAddress) ($($ForwardingTarget.PrimarySmtpAddress))"
+            } elseif ($Recipient.RecipientType -eq "MailUser") {
+                $RecipientContact = $Recipient | Get-MailUser 
+                Write-Host -ForegroundColor Yellow "Group: storemanager$StoreNumber@7-11.com --> Member: $($RecipientContact.PrimarySmtpAddress) (Mail user, not a mailbox - Possibly ON-PREM)"
+            } else {
+                Write-Warning "Invalid recipient type: $($Recipient.RecipientType)"
+                $Recipient
+            }
         }
     }
 }
