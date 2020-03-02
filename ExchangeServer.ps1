@@ -376,6 +376,40 @@ function Search-ExchangeObjects {
     Get-Recipient -Filter "name -like '*$SearchTerm*' -or PrimarySmtpAddress -like '*$SearchTerm*'" | select Name, PrimarySmtpAddress, RecipientType, RecipientTypeDetails | Format-Table -AutoSize
 }
 
+
+
+<#
+.Synopsis
+   Creates new remote mailbox
+.DESCRIPTION
+   Creates new remote mailbox. Use -shared for a shared mailbox.
+#>
+function Create-RemoteMailbox {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        $DisplayName,
+        [Parameter(Mandatory=$true)]
+        $Alias,
+        # Like "7-11.com/Corp/User Service Accounts"
+        $OU = "7-11.com/Corp/User Service Accounts",
+        [switch]$Shared
+    )
+    begin{
+        $Password = ConvertTo-SecureString "Inc0gn1t0!" -AsPlainText -Force
+    }
+
+    process {
+        "Creating $Alias@7-11.com"
+        if ($Shared) {
+            New-RemoteMailbox -Name $DisplayName -Shared -UserPrincipalName "$Alias@7-11.com" -SamAccountName $Alias -RemoteRoutingAddress "$Alias@711com.mail.onmicrosoft.com" -Password $Password -DisplayName $DisplayName -OnPremisesOrganizationalUnit $OU
+        } else {
+            New-RemoteMailbox -Name $DisplayName -UserPrincipalName "$Alias@7-11.com" -SamAccountName $Alias -RemoteRoutingAddress "$Alias@711com.mail.onmicrosoft.com" -Password $Password -DisplayName $DisplayName -OnPremisesOrganizationalUnit $OU
+        }
+    }
+}
+
+
 Connect-Exchange
 
 
