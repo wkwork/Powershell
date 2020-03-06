@@ -660,8 +660,12 @@ function Get-StoreForwardingAddress {
         foreach ($Recipient in $Recipients) {
             If ($Recipient.RecipientType -eq "UserMailbox"){
                 $RecipientMailbox = $Recipient | Get-Mailbox
-                $ForwardingTarget = Get-MailContact $RecipientMailbox.ForwardingAddress
-                Write-Host -ForegroundColor Yellow "Group: storemanager$StoreNumber@7-11.com --> Member: $($RecipientMailbox.Name) ($($RecipientMailbox.PrimarySmtpAddress)) --> Contact: $($RecipientMailbox.ForwardingAddress) ($($ForwardingTarget.PrimarySmtpAddress))"
+                if ($RecipientMailbox.ForwardingAddress){
+                    $ForwardingTarget = Get-MailContact $RecipientMailbox.ForwardingAddress
+                    Write-Host -ForegroundColor Yellow "Group: storemanager$StoreNumber@7-11.com --> Member: $($RecipientMailbox.Name) ($($RecipientMailbox.PrimarySmtpAddress)) --> Contact: $($RecipientMailbox.ForwardingAddress) ($($ForwardingTarget.PrimarySmtpAddress))"
+                } else {
+                    Write-Host -ForegroundColor Yellow "Group: storemanager$StoreNumber@7-11.com --> Member: $($RecipientMailbox.Name) ($($RecipientMailbox.PrimarySmtpAddress)) --> NO FORWARDING ENABLED"
+                }
             } elseif ($Recipient.RecipientType -eq "MailUser") {
                 $RecipientContact = $Recipient | Get-MailUser 
                 Write-Host -ForegroundColor Yellow "Group: storemanager$StoreNumber@7-11.com --> Member: $($RecipientContact.PrimarySmtpAddress) (Mail user, not a mailbox - Possibly ON-PREM)"

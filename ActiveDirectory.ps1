@@ -135,6 +135,19 @@ function Move-GroupMembership {
 }
 
 
+function Move-GroupOwnership {
+    param (
+        [Microsoft.ActiveDirectory.Management.ADUser]$OldOwner,
+        [Microsoft.ActiveDirectory.Management.ADUser]$NewOwner
+    )
+
+    # Assign owned groups to the new account
+    Get-ADGroup -Filter "ManagedBy -eq ""$($OldOwner.distinguishedname)""" |
+    Set-ADGroup -ManagedBy $NewOwner.distinguishedname -Confirm -Credential $AdminCred
+}
+
+
+
 # Add one user to each group that another user is assigned to, duplicating that user's group membership
 function Copy-GroupMembership {
     [CmdletBinding()]
@@ -419,6 +432,39 @@ function Get-RecipientTypeDetails {
         }
     }
 
+}
+
+
+
+function Get-DuplicateUsers {
+    param (
+        $OutputFile
+    )
+    
+    $StartTime = Get-Date
+    Write-Progress "Loading users..."
+
+    $Users = Get-ADUser -Properties Mail -Filter "Enabled -eq 'True'" | where Mail -like "*@*"
+
+    $CurrentCount = 0
+
+    foreach($User in $Users) {
+
+        $DuplicateUser = $null
+        $DuplicateEmailAddress = $User.Mail -replace "@", "2@"
+        $DuplicateUser = Get-ADUser -Properties Mail -Filter "Mail -eq ""$DuplicateEmailAddress"""
+
+        $CurrentCount++
+        Write-Progress "Checking $CurrentCount of $($Users.Count)" -PercentComplete (($CurrentCount/$Users.Count)*100)
+        if ($DuplicateUser){
+            $DuplicateCount++
+            $User, $DuplicateUser  | select Name, GivenName, Surname, UserPrincipalName, Mail, Enabled
+        }
+    }
+
+    $EndTime = Get-Date
+    $Duration = ($EndTime - $StartTime).seconds
+    "Found $DuplicateCount duplicates in $CurrentCount users. Query time $Duration seconds."
 }
 
 
