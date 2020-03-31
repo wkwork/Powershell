@@ -322,13 +322,14 @@ function New-ConferenceRoom {
     }
 }
 
-
+# Usage: Search-ExchangeLogs -Sender corpcomm@7-11.com
+# Usage: Search-ExchangeLogs -Sender corpcomm@7-11.com | group EventId
 function Search-ExchangeLogs {
     param (
         $Sender,
         $Recipients
     )
-    Get-MailboxServer USTXALMMB02 | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -EventId Receive
+    Get-MailboxServer USTXALMMB02 | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited | where {($_.EventId -eq "Receive") -or ($_.EventId -eq "Deliver")}
 }
 
 

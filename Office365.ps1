@@ -133,7 +133,7 @@ function Get-ProductDisplayName {
 #>
 function Send-LicenseReport {
     param (
-        [string[]]$To = @('keith.work@7-11.com', 'Cara.Packer@7-11.com'),
+        [string[]]$To = @('keith.work@7-11.com', 'Cara.Packer@7-11.com', 'Renee.Gillis@7-11.com','MARIANO.RIVERA@7-11.com'),
         [string]$From = "keith.work@7-11.com",
         [string]$Subject = "Office 365 License Report",
         [switch]$All,

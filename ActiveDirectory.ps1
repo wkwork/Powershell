@@ -93,9 +93,16 @@ function Confirm-GroupMembership {
 
 
 
+<#
+.Synopsis
+   Move users from one AD group to another
+.DESCRIPTION
+   Reads the group membership for the group and adds each
+   member to new group, confirming each.
+.NOTES
+   Keith Work: Added admin group to script 8/30/19
+#>
 
-# Move users from one AD group to another
-#  Added admin group to script 8/30/19
 function Move-GroupMembership {
     [CmdletBinding()]
     param (
@@ -134,7 +141,15 @@ function Move-GroupMembership {
     }
 }
 
-
+<#
+.Synopsis
+   Reassigns the group to a new owner
+.DESCRIPTION
+   Finds all groups managed by the $OldOwner and sets
+   the ManagedBy property to $NewOwner
+.NOTES
+   Keith Work 3/6/20
+#>
 function Move-GroupOwnership {
     param (
         [Microsoft.ActiveDirectory.Management.ADUser]$OldOwner,
@@ -147,8 +162,13 @@ function Move-GroupOwnership {
 }
 
 
-
-# Add one user to each group that another user is assigned to, duplicating that user's group membership
+<#
+.Synopsis
+   Assign all groups from one user to another
+.DESCRIPTION
+   Add one user to each group that another user is assigned to, duplicating that user's group membership
+#>
+# 
 function Copy-GroupMembership {
     [CmdletBinding()]
     param (
