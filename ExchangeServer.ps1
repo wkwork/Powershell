@@ -327,9 +327,11 @@ function New-ConferenceRoom {
 function Search-ExchangeLogs {
     param (
         $Sender,
-        $Recipients
+        $Recipients,
+        $DaysToReturn = 30
     )
-    Get-MailboxServer USTXALMMB02 | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited | where {($_.EventId -eq "Receive") -or ($_.EventId -eq "Deliver")}
+    $StartDate = (Get-Date).AddDays(-$DaysToReturn)
+    Get-ExchangeServer | where { $_.serverrole -eq 'Mailbox' } | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited -Start $StartDate | where {($_.EventId -eq "Receive") -or ($_.EventId -eq "Deliver")} | sort TimeStamp
 }
 
 
@@ -376,6 +378,65 @@ function Search-ExchangeObjects {
     "Searching for $SearchTerm"
     Get-Recipient -Filter "name -like '*$SearchTerm*' -or PrimarySmtpAddress -like '*$SearchTerm*'" | select Name, PrimarySmtpAddress, RecipientType, RecipientTypeDetails | Format-Table -AutoSize
 }
+
+<#
+.Synopsis
+   Creates new account and mailbox for Horizon stores
+.DESCRIPTION
+   Creates a new remote mailbox, sets the description
+   and name and adds the AD account to the Horizon groups.
+.Example
+    New-HorizonStore 38592
+.Example
+    38592, 31241, 45658 | New-HorizonStore
+#>
+function New-HorizonStore {
+    param (
+        [Parameter(Mandatory=$true,
+                   ValueFromPipeline=$true,
+                   Position=0)]
+        $StoreNumber
+    )
+    
+    process{
+        # Create the remote mailbox
+        $DisplayName = "COOP " + $StoreNumber
+        $Alias = "COOP" + $StoreNumber
+        $Password = ConvertTo-SecureString "&vZYS5xQ&^6*" -AsPlainText -Force
+        $OU = "7-11.com/Stores/Sunoco"
+
+        $User = $null
+        if ($User = Get-ADUser $Alias){
+            "{0} already exists" -f $User.Name
+        } else {
+            "Creating $Alias@7-11.com"
+            New-RemoteMailbox -Name $DisplayName -UserPrincipalName "$Alias@7-11.com" -SamAccountName $Alias -RemoteRoutingAddress "$Alias@711com.mail.onmicrosoft.com" -Password $Password -DisplayName $DisplayName -OnPremisesOrganizationalUnit $OU
+            $User = $null
+            do {
+                "Confirming user..."
+                $User = Get-ADUser $Alias
+                sleep 1
+            } while (! $User)
+            "Confirmed" + $User.DisplayName
+        }
+
+        # Set description and last name
+        "Setting properties..."
+        Set-ADUser $Alias -Surname $Alias -Description "Stripes - West" -Credential $AdminCred
+
+        # Assign to AD groups
+        "NAC-SunocoInStore",
+        "su_SunocoStores-1-20016944",
+        "su-Stores-Texas_Locations-1311725592",
+        "USER-MS-HORIZON-IPADS",
+        "USER-MS-Sub-AADPP1-F1",
+        "USER-MS-Sub-O365-F1-COOP_West" |ForEach-Object {
+            "Adding to $_..."
+            Add-ADGroupMember -Identity $_ -Members $Alias -Credential $AdminCred
+        }
+    }
+}
+
 
 
 
