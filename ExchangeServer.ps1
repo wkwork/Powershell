@@ -335,7 +335,7 @@ function Search-ExchangeLogs {
 }
 
 
-function Update-AuthenticationRequirements {
+function Update-StoreManagerGroups {
     [CmdletBinding()]
     param (
         
