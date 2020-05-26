@@ -1,5 +1,5 @@
 ﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
-Import-Module .\common.ps1
+. .\common.ps1
 
 
 function Connect-Exchange {
@@ -331,7 +331,8 @@ function Search-ExchangeLogs {
         $DaysToReturn = 30
     )
     $StartDate = (Get-Date).AddDays(-$DaysToReturn)
-    Get-ExchangeServer | where { $_.serverrole -eq 'Mailbox' } | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited -Start $StartDate | where {($_.EventId -eq "Receive") -or ($_.EventId -eq "Deliver")} | sort TimeStamp
+    Get-ExchangeServer | where { $_.serverrole -eq 'Mailbox' } | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited -Start $StartDate | where {($_.EventId -eq "Receive") -or ($_.EventId -eq "Deliver") -or ($_.EventId -eq "Fail")} | sort TimeStamp
+    # Get-ExchangeServer | where { $_.serverrole -eq 'Mailbox' } | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited -Start $StartDate | sort TimeStamp
 }
 
 

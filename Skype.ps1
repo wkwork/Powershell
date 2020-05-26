@@ -1,5 +1,4 @@
-﻿Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
-Import-Module .\ActiveDirectory.ps1
+﻿Import-Module .\ActiveDirectory.ps1
 
 function Connect-SkypeForBusiness {
     [CmdletBinding()]
@@ -13,6 +12,18 @@ function Connect-SkypeForBusiness {
         Import-PsSession $session
     }
     
+}
+
+
+
+function Connect-SkypeOnlineForBusiness {
+    param (
+
+    )
+    Import-Module SkypeOnlineConnector
+    $userCredential = Get-Credential
+    $sfbSession = New-CsOnlineSession -Credential $userCredential -OverrideAdminDomain “711com.onmicrosoft.com”
+    Import-PSSession $sfbSession
 }
 
 
@@ -94,5 +105,5 @@ function Grant-SkypeUserCloudPolicy
 
 
 
-$AdminCred = Get-Credential -Message "Domain Admin Credential"
-Connect-SkypeForBusiness -Cred $AdminCred
+# $AdminCred = Get-Credential -Message "Domain Admin Credential"
+# Connect-SkypeForBusiness -Cred $AdminCred

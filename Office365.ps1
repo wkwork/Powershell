@@ -1,11 +1,12 @@
 ﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 
 Import-Module .\ActiveDirectory.ps1
+. .\Common.ps1
 
 if ($Office365credentials) {
     Write-Warning "Using saved credentials..."
 } else {
-    [System.Management.Automation.PSCredential]$Office365credentials = Get-Credential -Message "Office 365 Credential"
+    [System.Management.Automation.PSCredential]$Office365credentials = Get-Credential -UserName keith.work@7-11.com -Message "Office 365 Credential"
 }
 
 <#
@@ -35,7 +36,7 @@ function Connect-O365 {
         if ($Office365credentials) {
             Write-Warning "Using saved credentials..."
         } else {
-            $Office365credentials = Get-Credential $Credential -Message "Office 365 credential"
+            $Office365credentials = Get-Credential -UserName keith.work@7-11.com -Message "Office 365 credential"
         }
 
         try{
@@ -133,7 +134,7 @@ function Get-ProductDisplayName {
 #>
 function Send-LicenseReport {
     param (
-        [string[]]$To = @('keith.work@7-11.com', 'Renee.Gillis@7-11.com','MARIANO.RIVERA@7-11.com'),
+        [string[]]$To = @('keith.work@7-11.com', 'Jill.Gallops@7-11.com', 'Renee.Gillis@7-11.com','MARIANO.RIVERA@7-11.com'),
         [string]$From = "keith.work@7-11.com",
         [string]$Subject = "Office 365 License Report",
         [switch]$All,
@@ -148,6 +149,7 @@ function Send-LicenseReport {
     Foreach ($Product in $Products){
 
         $DisplayName = $Product.AccountSkuId | Get-ProductDisplayName
+        if ($DisplayName -eq "Unknown") {$DisplayName = "SKU: $($Product.AccountSkuId)"}
         $AvailableUnits = $Product.ActiveUnits - $Product.ConsumedUnits
         $AvailablePercentage = ($AvailableUnits/$Product.ActiveUnits)*100
 
@@ -173,7 +175,9 @@ function Send-LicenseReport {
     $Result | Format-List
     $Body = $Result  | ConvertTo-Html
     $Body = [string]::Join(" ",$Body)
-    if ($Test){$Subject = "$Subject - TEST ONLY"}
+    if ($Test){
+        $Subject = "$Subject - TEST ONLY"
+    }
     Send-MailMessage -SmtpServer USTXALMMB01 -To $To -From $From -Subject $Subject -Body $Body -BodyAsHtml
 }
 
@@ -278,84 +282,6 @@ function Enable-OneDrive {
     }
 }
 
-
-function Reset-MFASettings {
-     
-    Param(
-    [Parameter (Mandatory = $true)]
-    [string] $UserPrincipalName,
-    [Parameter (Mandatory = $true)]
-    [System.Management.Automation.PSCredential]$Credentials
-    )
- 
-    Connect-MSOLService -credential $credentials
- 
-    $MSOLUser = Get-MSOLUser -UserPrincipalName $UserPrincipalName | Select-Object FirstName
-    $FirstName = $MSOLUser.FirstName
- 
-    if($null -eq $MSOLUser)
-    {
-        # $RoleAssigned = Get-MsolUserRole -UserPrincipalName $UserPrincipalName
-        if($null -eq $RoleAssigned)
-        {
-            Try
-            {
-                Login-AzureRmAccount -Credential $credentials
-                Connect-AzureAD -Credential $credentials
-                $UserManagerMail = (Get-AzureADUserManager -ObjectId $UserPrincipalName).Mail
-            }
-            Catch
-            {
-                $ExcMessage = $_.Exception.Message
-                throw "Error: Can not connect to Azure AD!. Exception: $ExcMessage"
-            }
-             
-            Try
-            {
-                Set-MSOLUser -UserPrincipalName $UserPrincipalName -StrongAuthenticationMethods @()
-                Write-output "MFA settings have been removed for account $UserPrincipalName"
-            }
-            Catch
-            {
-                $ExcMessage = $_.Exception.Message
-                throw "Error: Can not remove MFA settings!. Exception: $ExcMessage"
-            }
- 
-            Try
-            {    
-                $Body= "Dear $FirstName, <br/><br/>Please be informed that MFA settings for your account $UserPrincipalName have been reset. The next time you login to Office 365, you should be prompted to set up your multi-factor authentication. If you have any questions, please contact the Help Desk. <br /><br/> Thank You,<br /> 7 Eleven Infrastructure/Operations Team"
-                $Subject = "MFA Settings Updated"
-                $CredUserName = $Credentials.UserName
-             
-                Send-MailMessage `
-                    -To $UserPrincipalName  `
-                    -Cc $UserManagerMail  `
-                    -Subject $Subject  `
-                    -Body $Body `
-                    -SmtpServer 'USTXALMMB01' `
-                    -From $CredUserName `
-                    -BodyAsHtml
-                             
-             
-                Write-Output "Mail has been send!"
-            }
-            Catch
-            {
-                $ExcMessage = $_.Exception.Message
-                throw "Error: Can not send email!. Exception: $ExcMessage"
-            }
-        }
-        else
-        {
-                Write-Output "Account $UserPrincipalName has special role assigned and MFA settings can not be removed."
-        }
-         
-    }
-    else
-    {
-        Write-output "User with UPN $UserPrincipalName does not exist!"
-    }
-}
 
 
 
