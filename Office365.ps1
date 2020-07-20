@@ -149,7 +149,7 @@ function Send-LicenseReport {
     Foreach ($Product in $Products){
 
         $DisplayName = $Product.AccountSkuId | Get-ProductDisplayName
-        if ($DisplayName -eq "Unknown") {$DisplayName = "SKU: $($Product.AccountSkuId)"}
+        if ($DisplayName -eq "Unknown") {$DisplayName = "$($Product.AccountSkuId)" -replace "711com:",""}
         $AvailableUnits = $Product.ActiveUnits - $Product.ConsumedUnits
         $AvailablePercentage = ($AvailableUnits/$Product.ActiveUnits)*100
 
@@ -459,7 +459,7 @@ function Confirm-O365License {
     $ValidLicense = $false
 
     $User = Get-ADUser -Filter {mail -eq $Mail}
-
+    USER-MS-Sub-O365-F1-COOP_West
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-DefaultFeatureSet") {$E3 = $True}
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-AdvanceFeatureSet") {$E3 = $True}
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-O365-E3-COOP_East") {$E3 = $True}
@@ -470,11 +470,10 @@ function Confirm-O365License {
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5") {$E5 = $True}
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5-AdvanceFeatureSet") {$E5 = $True}
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-EMS-E5") {$E5M = $True}
-    if ($E3 -and $E3M){$ValidE3 = $True}
-    if ($E5 -and $E5M){$ValidE5= $True}
-    if ($ValidE5){$ValidLicense = $True}
+    if ($E3 -or $E5){$ValidLicense = $True}
+    if ($E3M -or $E5M){$ValidMobileLicense = $True}
     if ($ValidLicense){return $True} else {
-        Write-Warning "No valid license assigned to $Mail. Use Add-O365License to add one."
+        Write-Verbose "No valid license assigned to $Mail. Use Add-O365License to add one."
         return $false}
 }
 
@@ -602,6 +601,54 @@ function Get-StoreForwardingAddress {
         }
     }
 }
+
+# Migrate mail from one O365 user to another. BOTH mailboxes need to be
+# in O365. The source mailbox can be inactive.
+function Merge-UserMailboxes {
+    [CmdletBinding()]
+    param (
+        $OldUsername,
+        $NewUsername
+    )
+    
+    begin {
+        # Should probably add some checking here to be
+        # sure the 2 mailboxes exist
+    }
+    
+    process {
+
+        $OldEmailAddress = (Get-ADUser $OldUsername -Properties mail).mail
+        $NewEmailAddress = (Get-ADUser $NewUsername -Properties mail).mail
+
+        $OldExchangeGUID = (Get-Mailbox $OldEmailAddress -IncludeInactiveMailbox | 
+        select *guid).ExchangeGuid.Guid
+        $NewExchangeGUID = (Get-Mailbox $NewEmailAddress | 
+        select *guid).ExchangeGuid.Guid
+
+        if (($OldExchangeGUID) -and ($NewExchangeGUID)) {
+            Write-Warning "Move $OldUserName to the Disabled OU and do a manual sync to remove the old mailbox."
+
+            Write-Host "Checking for valid mailbox - disregard error below." -NoNewline
+            while (Get-Mailbox $OldEmailAddress) {sleep 10; Write-Host "." -NoNewline}
+            "Mailbox inactive! Starting restore job..."
+            Pause
+
+            New-MailboxRestoreRequest -SourceMailbox "$OldExchangeGUID" `
+             -TargetMailbox "$NewExchangeGUID"  -AllowLegacyDNMismatch -verbose
+
+        } else {
+            Write-Warning "Unable to locate one of the mailboxes:"
+            Write-Warning "Source: User [$OldUserName] - Email [$OldEmailAddress] - GUID [$OldExchangeGUID]"
+            Write-Warning "Target: User [$NewUserName] - Email [$NewEmailAddress] - GUID [$NewExchangeGUID]"
+        }
+    }
+    
+    end {
+        
+    }
+}
+
 
 
 Connect-O365

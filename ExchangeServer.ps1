@@ -331,8 +331,35 @@ function Search-ExchangeLogs {
         $DaysToReturn = 30
     )
     $StartDate = (Get-Date).AddDays(-$DaysToReturn)
-    Get-ExchangeServer | where { $_.serverrole -eq 'Mailbox' } | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited -Start $StartDate | where {($_.EventId -eq "Receive") -or ($_.EventId -eq "Deliver") -or ($_.EventId -eq "Fail")} | sort TimeStamp
-    # Get-ExchangeServer | where { $_.serverrole -eq 'Mailbox' } | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited -Start $StartDate | sort TimeStamp
+    $Logs = Get-ExchangeServer | where { $_.serverrole -eq 'Mailbox' } | Get-MessageTrackingLog -Sender $Sender -Recipients $Recipients -ResultSize Unlimited -Start $StartDate | where {($_.EventId -eq "Receive") -or ($_.EventId -eq "Deliver") -or ($_.EventId -eq "Fail")} | sort TimeStamp -Descending
+    "Found $($Logs.count) log entries"
+    $Logs
+}
+
+
+function Update-FieldConsultantGroups {
+    [CmdletBinding()]
+    param (
+        
+    )
+    
+    begin {
+        $Corrected = 0
+    }
+    
+    process {
+
+        Write-Host "Checking FC groups" -NoNewline
+
+        Get-DistributionGroup  -identity "field consultant *" -ResultSize 20000 | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
+
+            Write-Host " "
+            Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm
+            $Corrected++
+
+        }
+    }
 }
 
 
@@ -343,30 +370,25 @@ function Update-StoreManagerGroups {
     )
     
     begin {
-        $AlreadySet = 0
         $Corrected = 0
     }
     
     process {
 
-        Write-Host "Checking groups" -NoNewline
+        Write-Host "Checking store groups" -NoNewline
 
-        Get-DistributionGroup -identity "store manager *" -ResultSize 20000 | foreach-object {
+        Get-DistributionGroup  -identity "store manager *" -ResultSize 20000 | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
 
-            if ($_.RequireSenderAuthenticationEnabled -eq $False){
-                Write-Host "." -NoNewline
-                $AlreadySet++
-            } else {
-                Write-Host " "
-                Write-Host "UPDATING $($_.Name)..."
-                Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm
-                $Corrected++
-            }
+            Write-Host " "
+            Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm
+            $Corrected++
+
         }
     }
     
     end {
-        "$AlreadySet already set. $Corrected corrected."
+        Write-Warning "$Corrected corrected."
     }
 }
 
