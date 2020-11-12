@@ -1,7 +1,6 @@
 ﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 . .\common.ps1
 
-
 function Connect-Exchange {
 
     . 'C:\Program Files\Microsoft\Exchange Server\V15\bin\RemoteExchange.ps1'
@@ -337,53 +336,74 @@ function Search-ExchangeLogs {
 }
 
 
-function Update-FieldConsultantGroups {
+
+
+function Update-MarketManagerGroups {
     [CmdletBinding()]
-    param (
-        
-    )
+    param ()
     
-    begin {
-        $Corrected = 0
-    }
+    begin {$Corrected = 0}
     
     process {
 
-        Write-Host "Checking FC groups" -NoNewline
+        Write-Host "Checking MM groups"
 
-        Get-DistributionGroup  -identity "field consultant *" -ResultSize 20000 | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
+        Get-DistributionGroup -Filter "Name -like 'Mkt Mgr MKT-*'" -ResultSize 20000 | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
 
             Write-Host " "
             Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
-            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm -ErrorAction Silentlycontinue
             $Corrected++
-
         }
+    }
+
+    end {
+        Write-Warning "$Corrected corrected."
+    }
+}
+
+
+
+function Update-FieldConsultantGroups {
+    [CmdletBinding()]
+    param ()
+    
+    begin {$Corrected = 0}
+    
+    process {
+
+        Write-Host "Checking FC groups"
+
+        Get-DistributionGroup -Filter "Name -like 'field consultant *'" -ResultSize 20000 | where Name -match "Field Consultant \d*" | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
+
+            Write-Host " "
+            Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm -ErrorAction Silentlycontinue
+            $Corrected++
+        }
+    }
+
+    end {
+        Write-Warning "$Corrected corrected."
     }
 }
 
 
 function Update-StoreManagerGroups {
     [CmdletBinding()]
-    param (
-        
-    )
+    param ()
     
-    begin {
-        $Corrected = 0
-    }
+    begin {$Corrected = 0}
     
     process {
 
-        Write-Host "Checking store groups" -NoNewline
+        Write-Host "Checking store groups"
 
-        Get-DistributionGroup  -identity "store manager *" -ResultSize 20000 | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
-
+        Get-DistributionGroup -Filter "Name -like 'Store Manager *'" -ResultSize 20000 | where Name -match "Store Manager \d*" | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
             Write-Host " "
             Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
-            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm:$True
             $Corrected++
-
         }
     }
     
@@ -392,6 +412,16 @@ function Update-StoreManagerGroups {
     }
 }
 
+
+function Update-DistributionGroups {
+    param ()
+    
+    process{
+        Update-StoreManagerGroups
+        Update-FieldConsultantGroups
+        Update-MarketManagerGroups
+    }
+}
 
 
 function Search-ExchangeObjects {

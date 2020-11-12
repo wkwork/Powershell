@@ -1,12 +1,12 @@
 ﻿# Push-Location '\\7-encrypt\cssdocs$\Script Repository\PowerShell\Modules'
 
-Import-Module .\ActiveDirectory.ps1
+# Import-Module .\ActiveDirectory.ps1
 . .\Common.ps1
 
 if ($Office365credentials) {
     Write-Warning "Using saved credentials..."
 } else {
-    [System.Management.Automation.PSCredential]$Office365credentials = Get-Credential -UserName keith.work@7-11.com -Message "Office 365 Credential"
+    [System.Management.Automation.PSCredential]$Office365credentials = Get-Credential -UserName keith.work@7-11.com -Message "Office 365 Admin Credentials"
 }
 
 <#
@@ -145,18 +145,35 @@ function Send-LicenseReport {
 
     $Products = Get-msolAccountSku | Sort-Object AccountSKUID
     [array]$Result = $Null
+    [array]$AdminResult = $Null
 
     Foreach ($Product in $Products){
 
         $DisplayName = $Product.AccountSkuId | Get-ProductDisplayName
         if ($DisplayName -eq "Unknown") {$DisplayName = "$($Product.AccountSkuId)" -replace "711com:",""}
-        $AvailableUnits = $Product.ActiveUnits - $Product.ConsumedUnits
-        $AvailablePercentage = ($AvailableUnits/$Product.ActiveUnits)*100
+        $AvailableUnits = ($Product.ActiveUnits + $Product.WarningUnits) - $Product.ConsumedUnits
+        if ($AvailableUnits -le 0) {
+            $AvailablePercentage = 0
+        } else {
+            $AvailablePercentage = ($AvailableUnits/($Product.ActiveUnits + $Product.WarningUnits))*100
+        }
 
+        if ($AvailablePercentage -lt 5) {
+
+            # Email admins for license shortage
+            $AdminResult += $Product | Select-Object @{N='Name';E={$DisplayName}},
+            @{N='Active';E={$_.ActiveUnits}},
+            @{N='Warning';E={$_.WarningUnits}},
+            @{N='Assigned';E={$_.ConsumedUnits}},
+            @{N='Available'; E={$AvailableUnits}},
+            @{N='PercentAvailable'; E={"$([math]::Round($AvailablePercentage))%"}}
+        }
+        
         if ($All){
             # Don't restrict results
             $Result += $Product | Select-Object @{N='Name';E={$DisplayName}},
                 @{N='Active';E={$_.ActiveUnits}},
+                @{N='Warning';E={$_.WarningUnits}},
                 @{N='Assigned';E={$_.ConsumedUnits}},
                 @{N='Available'; E={$AvailableUnits}},
                 @{N='PercentAvailable'; E={"$([math]::Round($AvailablePercentage))%"}}
@@ -165,6 +182,7 @@ function Send-LicenseReport {
             if ($AvailablePercentage -lt 10) {
                 $Result += $Product | Select-Object @{N='Name';E={$DisplayName}},
                     @{N='Active';E={$_.ActiveUnits}},
+                    @{N='Warning';E={$_.WarningUnits}},
                     @{N='Assigned';E={$_.ConsumedUnits}},
                     @{N='Available'; E={$AvailableUnits}},
                     @{N='PercentAvailable'; E={"$([math]::Round($AvailablePercentage))%"}}
@@ -179,6 +197,14 @@ function Send-LicenseReport {
         $Subject = "$Subject - TEST ONLY"
     }
     Send-MailMessage -SmtpServer USTXALMMB01 -To $To -From $From -Subject $Subject -Body $Body -BodyAsHtml
+
+    if ($AdminResult){
+        $Admins = @('keith.work@7-11.com', 'damon.mapp@7-11.com', 'james.owens@7-11.com', 'scott.craglow@7-11.com')
+        $Subject = "URGENT - Office 365 licenses low!"
+        $Body = $AdminResult  | ConvertTo-Html
+        $Body = [string]::Join(" ",$Body)
+        Send-MailMessage -SmtpServer USTXALMMB01 -To $Admins -From $From -Subject $Subject -Body $Body -BodyAsHtml
+    }
 }
 
 
@@ -295,7 +321,7 @@ Function Enable-O365Users {
         [Parameter(Mandatory = $true, ParameterSetName = 'E5')][switch]$E5License
     )
 
-    $Cred = Get-Credential -Message "Domain admin credentials:" -UserName $env:USERNAME + "@7-11.com"
+    # $Cred = Get-Credential -Message "Domain admin credentials:" -UserName "kwork002@7-11.com"
     
     if ($F1License){
         $Group1 = "USER-MS-SUB-SA-F1"
@@ -496,6 +522,7 @@ function Assign-O365License {
             # Add F1
             Write-Warning "Assigning F1 to $UserPrincipalName"
             Add-ADGroupMember -Identity USER-MS-SUB-SA-F1 -Members $User -Credential $AdminCred
+            Add-ADGroupMember -Identity USER-MS-Sub-AADPP1-F1 -Members $User -Credential $AdminCred
         }
 
         if ($E3){
@@ -602,8 +629,28 @@ function Get-StoreForwardingAddress {
     }
 }
 
+
+
+function Get-UserForwardingAddress {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true, ValueFromPipeline)]$Recipient
+    )
+    process{
+
+        $RecipientMailbox = Get-Mailbox $Recipient
+        if ($RecipientMailbox.ForwardingAddress){
+            $ForwardingTarget = Get-MailContact $RecipientMailbox.ForwardingAddress
+            Write-Host -ForegroundColor Yellow "$Recipient --> Member: $($RecipientMailbox.Name) ($($RecipientMailbox.PrimarySmtpAddress)) --> Contact: $($RecipientMailbox.ForwardingAddress) ($($ForwardingTarget.PrimarySmtpAddress))"
+        } else {
+            Write-Host -ForegroundColor Yellow "$Recipient --> Member: $($RecipientMailbox.Name) ($($RecipientMailbox.PrimarySmtpAddress)) --> NO FORWARDING ENABLED"
+        }
+    }
+}
+
+
 # Migrate mail from one O365 user to another. BOTH mailboxes need to be
-# in O365. The source mailbox can be inactive.
+# in O365. The source mailbox MUST be inactive.
 function Merge-UserMailboxes {
     [CmdletBinding()]
     param (
@@ -621,7 +668,7 @@ function Merge-UserMailboxes {
         $OldEmailAddress = (Get-ADUser $OldUsername -Properties mail).mail
         $NewEmailAddress = (Get-ADUser $NewUsername -Properties mail).mail
 
-        $OldExchangeGUID = (Get-Mailbox $OldEmailAddress -IncludeInactiveMailbox | 
+        $OldExchangeGUID = (Get-Mailbox $OldEmailAddress -InactiveMailboxOnly | 
         select *guid).ExchangeGuid.Guid
         $NewExchangeGUID = (Get-Mailbox $NewEmailAddress | 
         select *guid).ExchangeGuid.Guid
@@ -646,6 +693,87 @@ function Merge-UserMailboxes {
     
     end {
         
+    }
+}
+
+
+
+function Reset-O365Session {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)]
+        $User
+    )
+    
+    begin {
+        Connect-SPOService -Url https://711com-admin.sharepoint.com -Credential $Office365credentials
+    }
+    
+    process {
+        
+        [array]$Users = $null
+        if ($User -match "^\d{5}"){
+            # User is a store number
+            Write-Warning "Resetting users for store $User"
+            $Users = Get-ADGroupMember -Identity "store manager $User" | Get-ADUser -Properties Mail
+        } else {
+            # User is an account 
+            $Users = Get-ADUser $User -Properties Mail
+        }
+
+        foreach ($ADUser in $Users) {
+            # Revoke Profile
+            Revoke-SPOUserSession -user $ADUser.UserPrincipalName -Confirm
+        }   
+    }
+    
+    end {}
+}
+
+
+
+<#
+.DESCRIPTION
+
+Resets the Office 365 session for each user in a
+store and creates a CSV record. Use -LogFile to specify
+a file. Default is C:\Temp\"c:\temp\ResetUsers.csv"
+
+.EXAMPLE
+
+Reset-StoreUsersO365Session 10406
+Single store reset
+
+.EXAMPLE
+"10766", "10799" | Reset-StoreUsersO365Session
+Multiple stores reset
+
+.EXAMPLE
+
+Import-Csv C:\temp\Input.csv | Reset-StoreUsersO365Session
+Using an input file for multiple stores - column name must
+be "StoreNumber"
+
+#>
+function Reset-StoreUsersO365Session {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)]
+        $StoreNumber,
+        $Logfile = "c:\temp\ResetUsers.csv"
+    )
+    
+    begin {if (Test-Path $Logfile) {Remove-Item $Logfile -Force}}
+    
+    process {
+        Write-Warning "Processing store $StoreNumber"
+        $StoreUsers = Get-StoreUsers $StoreNumber
+        $StoreUsers | select Title, Name, SamAccountName, UserPrincipalName, Mail | Export-Csv $LogFile -Append -NoTypeInformation
+        $StoreUsers | Reset-O365Session
+    }
+    
+    end {
+        Write-Warning "See $Logfile for record"
     }
 }
 
