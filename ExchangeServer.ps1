@@ -352,7 +352,7 @@ function Update-MarketManagerGroups {
 
             Write-Host " "
             Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
-            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm -ErrorAction Silentlycontinue
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False
             $Corrected++
         }
     }
@@ -378,7 +378,7 @@ function Update-FieldConsultantGroups {
 
             Write-Host " "
             Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
-            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm -ErrorAction Silentlycontinue
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False
             $Corrected++
         }
     }
@@ -402,7 +402,7 @@ function Update-StoreManagerGroups {
         Get-DistributionGroup -Filter "Name -like 'Store Manager *'" -ResultSize 20000 | where Name -match "Store Manager \d*" | where RequireSenderAuthenticationEnabled -eq $True | foreach-object {
             Write-Host " "
             Write-Host "UPDATING $($_.Name) (created $($_.WhenCreated))..."
-            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False -Confirm:$True
+            Set-DistributionGroup -Identity "$($_.Name)" -RequireSenderAuthenticationEnabled $False
             $Corrected++
         }
     }
