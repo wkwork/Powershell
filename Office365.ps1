@@ -477,11 +477,7 @@ function Confirm-O365License {
     )
     
     $E3 = $false
-    $E3M = $false
     $E5 = $false
-    $E5M = $false
-    $ValidE3 = $false
-    $ValidE5 = $false
     $ValidLicense = $false
 
     $User = Get-ADUser -Filter {mail -eq $Mail}
@@ -497,7 +493,6 @@ function Confirm-O365License {
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-SPE-E5-AdvanceFeatureSet") {$E5 = $True}
     if (Confirm-GroupMembership -User $User -GroupName "USER-MS-Sub-EMS-E5") {$E5M = $True}
     if ($E3 -or $E5){$ValidLicense = $True}
-    if ($E3M -or $E5M){$ValidMobileLicense = $True}
     if ($ValidLicense){return $True} else {
         Write-Verbose "No valid license assigned to $Mail. Use Add-O365License to add one."
         return $false}
