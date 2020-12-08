@@ -779,4 +779,55 @@ function Reset-StoreUsersO365Session {
 
 
 
+
+<#
+.Synopsis
+   Searches the CSV output from Email reader
+.DESCRIPTION
+   Searches \\Ustxalaspw01\d$\EmailForwardList for the given search term
+   to confirm a user has requested email forwarding. Has to be run as domain admin.
+   Search term should be either the samaccountname of the user or the email address
+   they are requesting forwarding to.
+.EXAMPLE
+   Get-EmailReaderRequests "newlu001"
+#>
+<#
+.Synopsis
+   Searches the CSV output from Email reader
+.DESCRIPTION
+   Searches \\Ustxalaspw01\d$\EmailForwardList for the given search term
+   to confirm a user has requested email forwarding. Has to be run as domain admin.
+   Search term should be either the samaccountname of the user or the email address
+   they are requesting forwarding to.
+.EXAMPLE
+   Get-EmailReaderRequests "newlu001"
+#>
+function Get-EmailReaderRequests
+{
+    [CmdletBinding()]
+    Param
+    (
+        # Param1 help description
+        [Parameter(Mandatory=$true,
+                   Position=0)]
+        $SearchTerm,
+        [string[]]$SearchLocations = @("\\MSPW-7HBN-W01\f$\PS Scripts\Generate FZ Email FWD CSV\EmailForwardListLogs","\\Ustxalaspw01\d$\EmailForwardList")
+    )
+
+    Process
+    {
+        $Files = $Null
+        foreach ($SearchLocation in $SearchLocations){
+            $Files += Get-ChildItem $SearchLocation | sort lastwritetime -Descending
+        }
+
+        foreach ($File in $Files) {
+
+            Write-Progress -Activity $File.FullName -Status "Searching files - this may take a while. CTRL+C to stop."
+            Import-Csv $File.FullName | where {($_.Author -eq $SearchTerm) -or ($_.Email -eq $SearchTerm)} | select Author, Email, @{Name="File";Expression={$File.Name}}
+        }
+    }
+}
+
+
 Connect-O365
